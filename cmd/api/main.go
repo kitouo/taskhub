@@ -2,17 +2,14 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
-	"os"
+
+	"github.com/kitouo/taskhub/internal/config"
+	"github.com/kitouo/taskhub/internal/httpx"
+	"github.com/kitouo/taskhub/internal/logx"
 )
 
-func main() {
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
+func newMux() http.Handler {
 
 	// 创建路由
 	mux := http.NewServeMux()
@@ -27,10 +24,26 @@ func main() {
 		_, _ = fmt.Fprintf(w, "taskhub/dev\n")
 	})
 
-	addr := ":" + port
-	log.Printf("Starting server on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		log.Fatal(err)
+	return mux
+}
+
+func main() {
+
+	cfg, err := config.Load()
+	if err != nil {
+		panic(err)
+	}
+
+	logger := logx.New("service=api")
+	logger.Info("starting", "config="+cfg.SafeString())
+
+	h := newMux()
+	h = httpx.AccessLogger(logger, h)
+	h = httpx.WithRequestID(h) // 最外层
+
+	addr := ":" + cfg.HTTPPort
+	if err := http.ListenAndServe(addr, h); err != nil {
+		logger.Error("server stopped", "err=", err)
 	}
 
 }

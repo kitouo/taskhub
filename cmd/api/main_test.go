@@ -3,20 +3,8 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 )
-
-func main() {
-
-	// 获取系统环境变量
-	port := os.Getenv("PORT")
-	// 如果端口为空，则指定8080端口
-	if port == "" {
-		port = "8080"
-	}
-
-}
 
 // TestHealthz 健康监测/**
 func TestHealthz(t *testing.T) {
