@@ -3,10 +3,11 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
-// 配置结构体
+// Config 配置结构体
 type Config struct {
 	AppEnv string // 运行环境 dev/staging/prod
 
@@ -20,6 +21,11 @@ type Config struct {
 	error：明确失败（请求失败、依赖不可用、任务处理失败）
 	**/
 	LogLevel string
+
+	ReadTimeoutSec     int
+	WriteTimeoutSec    int
+	IdleTimeoutSec     int
+	ShutdownTimeoutSec int
 }
 
 // Load 加载器
@@ -29,6 +35,11 @@ func Load() (Config, error) {
 		AppEnv:   getenv("APP_ENV", "dev"),
 		HTTPPort: getenv("HTTP_PORT", "8080"),
 		LogLevel: strings.ToLower(getenv("LOG_LEVEL", "info")),
+
+		ReadTimeoutSec:     getenvInt("READ_TIMEOUT_SEC", 5),
+		WriteTimeoutSec:    getenvInt("WRITE_TIMEOUT_SEC", 10),
+		IdleTimeoutSec:     getenvInt("IDLE_TIMEOUT_SEC", 60),
+		ShutdownTimeoutSec: getenvInt("SHUTDOWN_TIMEOUT_SEC", 10),
 	}
 
 	if cfg.HTTPPort == "" {
@@ -55,4 +66,19 @@ func getenv(key, def string) string {
 		return v
 	}
 	return def
+}
+
+func getenvInt(key string, def int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+
+	n, err := strconv.Atoi(v)
+	if err != nil || n <= 0 {
+		return def
+	}
+
+	return n
+
 }
