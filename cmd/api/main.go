@@ -17,11 +17,21 @@ func newMux() http.Handler {
 	// 路由注册
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("ok"))
 	})
 
 	mux.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprintf(w, "taskhub/dev\n")
+	})
+
+	mux.HandleFunc("/error", func(w http.ResponseWriter, r *http.Request) {
+		rid := httpx.RequestIDFromContext(r.Context())
+		httpx.WriteError(w, http.StatusBadRequest,
+			"INVALID_ARGUMENT", "bad request example", rid)
+	})
+
+	mux.HandleFunc("/panic", func(w http.ResponseWriter, r *http.Request) {
+		panic("boom")
 	})
 
 	return mux
@@ -34,11 +44,12 @@ func main() {
 		panic(err)
 	}
 
-	logger := logx.New("service=api")
+	logger := logx.New("server=api", logx.ParseLevel(cfg.LogLevel))
 	logger.Info("starting", "config="+cfg.SafeString())
 
 	h := newMux()
 	h = httpx.AccessLogger(logger, h)
+	h = httpx.Recover(logger, h)
 	h = httpx.WithRequestID(h) // 最外层
 
 	addr := ":" + cfg.HTTPPort
