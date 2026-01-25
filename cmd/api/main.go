@@ -17,6 +17,10 @@ func main() {
 	logger := logx.New("server=api", logx.ParseLevel(cfg.LogLevel))
 	logger.Info("starting server", "config="+cfg.SafeString())
 
-	application := app.New(cfg, logger)
+	application, err := app.New(cfg, logger)
+	if err != nil {
+		logger.Error("app init failed", "err=", err)
+		panic(err)
+	}
 	_ = application.Run(context.Background())
 }

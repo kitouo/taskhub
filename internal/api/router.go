@@ -1,19 +1,23 @@
 package api
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/kitouo/taskhub/internal/service"
 )
 
 type Router struct {
-	task *TaskHandler
+	task       *TaskHandler
+	readyCheck func(context.Context) error
 }
 
-func NewRouter(svc *service.TaskService) http.Handler {
+func NewRouter(svc *service.TaskService, readyCheck func(context.Context) error) http.Handler {
 
 	r := &Router{
-		task: NewTaskHandler(svc),
+		task:       NewTaskHandler(svc),
+		readyCheck: readyCheck,
 	}
 
 	mux := http.NewServeMux()
@@ -34,6 +38,21 @@ func (r *Router) healthz(w http.ResponseWriter, req *http.Request) {
 }
 
 func (r *Router) readyz(w http.ResponseWriter, req *http.Request) {
+	/*
+		如果注入了readyCheck，说明存在外部以来
+		这里设置一个很短的超时，避免/readyz被卡死
+	*/
+	if r.readyCheck != nil {
+		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
+		defer cancel()
+
+		if err := r.readyCheck(ctx); err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte("not ready"))
+			return
+		}
+	}
+
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("ok"))

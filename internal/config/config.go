@@ -26,6 +26,15 @@ type Config struct {
 	WriteTimeoutSec    int
 	IdleTimeoutSec     int
 	ShutdownTimeoutSec int
+
+	/*
+		RepoMode 决定使用哪种数据存储实现：
+			- "memory": 仅内存存储，适合本地开发/纯单测
+			- "mysql" : 使用MySQL持久化，适合生产/云原生部署
+	*/
+	RepoMode string
+	DBDriver string
+	DBDNS    string
 }
 
 // Load 加载器
@@ -40,6 +49,12 @@ func Load() (Config, error) {
 		WriteTimeoutSec:    getenvInt("WRITE_TIMEOUT_SEC", 10),
 		IdleTimeoutSec:     getenvInt("IDLE_TIMEOUT_SEC", 60),
 		ShutdownTimeoutSec: getenvInt("SHUTDOWN_TIMEOUT_SEC", 10),
+
+		// 默认memory，避免没有MySQL时启动失败
+		RepoMode: getenv("REPO_MODE", "memory"),
+		DBDriver: getenv("DB_DRIVER", "mysql"),
+		// 示例：user:pass@tcp(127.0.0.1:3306)/taskhub?parseTime=true&loc=UTC&charset=utf8mb4&collation=utf8mb4_unicode_ci
+		DBDNS: getenv("DB_DSN", ""),
 	}
 
 	if cfg.HTTPPort == "" {
@@ -57,7 +72,17 @@ func Load() (Config, error) {
 }
 
 func (c Config) SafeString() string {
-	return fmt.Sprintf("app_env: %s, http_port: %s, level: %s", c.AppEnv, c.HTTPPort, c.LogLevel)
+	hasDSN := "no"
+	if c.DBDNS != "" {
+		hasDSN = "yes"
+	}
+
+	return fmt.Sprintf(
+		"app_env: %s, http_port: %s, level: %s, repo_mode: %s, db_driver: %s, db_dsn_set: %s, rt: %ds, wt: %ds, it: %ds, st: %ds",
+		c.AppEnv, c.HTTPPort, c.LogLevel,
+		c.RepoMode, c.DBDriver, hasDSN,
+		c.ReadTimeoutSec, c.WriteTimeoutSec, c.IdleTimeoutSec, c.ShutdownTimeoutSec,
+	)
 }
 
 // 读取环境变量

@@ -28,10 +28,10 @@ func (s *TaskService) Create(ctx context.Context, title string) (model.Task, err
 		return model.Task{}, ErrInvalidTitle
 	}
 	t := model.Task{
-		ID:       NewID(),
-		Title:    title,
-		Done:     false,
-		CreateAt: time.Now().UTC(),
+		ID:        NewID(),
+		Title:     title,
+		Done:      false,
+		CreatedAt: time.Now().UTC(),
 	}
 	return s.repo.Create(ctx, t)
 }
