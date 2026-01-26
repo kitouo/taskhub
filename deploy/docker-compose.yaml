@@ -10,3 +10,38 @@ services:
       - "3307:3306"
     command:
       ["--default-authentication-plugin=mysql_native_password"]
+    healthcheck:
+      # mysqladmin ping成功才算ready
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u taskhub -ptaskhubpass --silent"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      REPO_MODE: mysql
+      DB_DRIVER: mysql
+      # 关键：容器网络里访问mysql，用服务名mysql:3306
+      # 注意：不要写127.0.0.1:3307，那是宿主机映射端口，容器内不用
+      DB_DSN: taskhub:taskhubpass@tcp(mysql:3306)/taskhub?parseTime=true&loc=UTC&charset=utf8mb4&collation=utf8mb4_unicode_ci
+      HTTP_PORT: 8080
+      WRITE_TIMEOUT_SEC: "10"
+      IDLE_TIMEOUT_SEC: "60"
+      SHUTDOWN_TIMEOUT_SEC: "10"
+      LOG_LEVEL: "info"
+    ports:
+      - "8080:8080"
+    # 确保MySQL先ready，在启动api（降低启动时ping失败概率）
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/readyz >/dev/null || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+
+
